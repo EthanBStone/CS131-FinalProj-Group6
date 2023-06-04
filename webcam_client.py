@@ -92,6 +92,7 @@ if __name__ == "__main__":
         ip = "127.0.0.1"
     else :
         ip = input("input the ip address you are connecting to ie 127.0.0.1")        
+    tag = input("Enter your player number, 1 or 2\n")
     temp = tag + "here"
     requests.get(f"http://{ip}:5000/playerInput?data={temp}")
     t1 = threading.Thread(target=getUpdate)

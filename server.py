@@ -1,9 +1,18 @@
 
+
 from flask import Flask, redirect, url_for, request
 import random
+#For cloud label generation
+# pip install --upgrade google-cloud-storage
+#import os
+#from google.cloud import storage
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'serviceKeyGCloud.json'
+#storage_client = storage.Client()
+
+
 app = Flask(__name__)
 
-random_labels = ['oxygen_mask', 'jersey', 'sweatshirt', 'water_bottle', 'pill_bottle', 'teddy', 'harmonica']
+random_labels = ['jersey', 'water_bottle', 'pill_bottle', 'backpack','joystick']
 last_label = ""
 label_to_find = "water_bottle"
 active_ = False #True
@@ -19,11 +28,12 @@ player2Here = False
 player1Score = 0
 player2Score = 0
 max_score = 4
+playerWon = 0
 player1prev = ""
 player2prev = ""
 player1Updated = False #True
 player2Updated = False #True
-players = []
+players = {}
 
 
 # Displays on the web page, not necessary
@@ -68,8 +78,11 @@ def playerInput():
    str = str[1:]
 
    #print("input: " + str + "\nlabeltoFind: " + label_to_find)
-
+   # Player joins game
    if (str == "here"):
+      #players[tag] = Player()
+      #players[tag].name = tag
+      #players[tag].score = 0
       if (tag == '1'):
          player1Here = not player1Here
       elif(tag == '2'):
@@ -94,6 +107,42 @@ def playerInput():
 
 
 
+def playersNotReady() :
+     #print("P count = ", len(players))
+     return player1Here == False or player2Here == False
+
+def pickNewLabel() :
+   global last_label
+   global label_to_find
+   global random_labels
+   # Cloud testing
+   #global stoage_client
+   #bucket = storage_client.get_bucket('possible_object_labels')
+   #blob = storage_client.get_blob('objNames.txt')
+   #blob = blob.download_as_string()
+   #blob = blob.decode('utf-8')
+
+   #random_labels = []
+   #for label in blob.split():
+      #random_labels.append(label)
+   
+   label_to_find = random.choice(random_labels)
+   # Prevent duplicate label picking
+   while(label_to_find == last_label) : 
+      label_to_find = random.choice(random_labels)
+   last_label = label_to_find
+
+def winCheck() :
+   global player1Score
+   global player2Score     
+   global max_score
+
+   if player1Score > max_score :
+      return 1
+   elif player2Score > max_score :
+      return 2
+   return -1 
+
 @app.route("/playerUpdate")
 def playerUpdate():
    #global imports
@@ -110,9 +159,10 @@ def playerUpdate():
    global player2prev
    global player1Updated
    global player2Updated
+   global playerWon
    # globals imports
 
-   if (player1Here == False or player2Here == False): return "Other player isn't ready yet"
+   if (playersNotReady()): return "Other player isn't ready yet"
 
    data = 'fail'
    if 'data' in request.args: 
@@ -122,24 +172,42 @@ def playerUpdate():
 
    if (active_ == False):
       active_ = True
-      label_to_find = random.choice(random_labels)
-      # Prevent duplicate label picking
-      while(label_to_find == last_label) :
-         label_to_find = random.choice(random_labels)
-      last_label = label_to_find
-      
+      pickNewLabel()
 
    if (tag == "1"):
+      if playerWon == 2:
+         temp = f"Player 2 wins! Restarting game\nNew label to find is: {label_to_find}"
+         playerWon = 0
+         player1Updated = True
+         return temp
       if (player1Updated == False):
          if (labelUpdate):
-            temp = f"New score is\nPlayer 1: {player1Score}\nPlayer 2: {player2Score}\nNew label to find is: {label_to_find}"
+            if(winCheck() == 1) :
+               temp = f"Player 1 wins! Restarting game\nNew label to find is: {label_to_find}"
+               player1Score = 0
+               player2Score = 0
+               playerWon = 1
+            else :
+               temp = f"New score is\nPlayer 1: {player1Score}\nPlayer 2: {player2Score}\nNew label to find is: {label_to_find}"
             player1Updated = True
+
             return temp
 
    if (tag == "2"):
+      if playerWon == 1:
+         temp = f"Player 1 wins! Restarting game\nNew label to find is: {label_to_find}"
+         playerWon = 0
+         player1Updated = True
+         return temp      
       if (player2Updated == False):
          if (labelUpdate):
-            temp = f"New score is\nPlayer 1: {player1Score}\nPlayer 2: {player2Score}\nNew label to find is: {label_to_find}"
+            if(winCheck() == 2) :
+               temp = f"Player 2 wins! Restarting game\nNew label to find is: {label_to_find}"
+               player1Score = 0
+               player2Score = 0
+               playerWon == 2           
+            else:
+               temp = f"New score is\nPlayer 1: {player1Score}\nPlayer 2: {player2Score}\nNew label to find is: {label_to_find}"
             player2Updated = True
             return temp
 
